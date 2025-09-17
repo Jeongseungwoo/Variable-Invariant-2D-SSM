@@ -57,11 +57,8 @@ class PI2DSSM(nn.Module):
 
         # attention aggregation
         if self.pool_type == 'attention': 
-            self.att_dim = min(d_inner, 64)
-            self.W_q = nn.Linear(d_inner, self.att_dim, bias=False)
-            self.W_k = nn.Parameter
-            self.var_key = nn.Parameter(torch.randn(d_inner, self.attn_dim) / math.sqrt(self.attn_dim))
-            self.var_value = nn.Parameter(torch.randn(d_inner, d_inner) / math.sqrt(d_inner)) 
+            attn_dim = min(d_inner, 64)
+            self.pool = InvariantAttnPool(d_inner, attn_dim)
 
         # output proj
         self.C_h = nn.Linear(d_inner, d_inner, bias=False)
@@ -79,12 +76,7 @@ class PI2DSSM(nn.Module):
             z = h_v.sum(dim=1, keepdim=True) / h_v.shape[1] # scaling
             proj = self.W_v(z.permute(0, 2, 1)).permute(0, 2, 1)
         elif self.pool_type == 'attention': 
-            h = h_v.transpose(-1, -2) # [B, L, C]
-            q = self.W_q(h) # [B, L, att_dim]
-            logits = torch.einsum("blh,ch->blc", q, self.var_key) / math.sqrt(self.att_dim)
-            alpha = torch.softmax(logits, dim=-1)
-            w= alpha * h
-            proj = torch.einsum("blc,cd->bld", w, self.var_value).transpose(-1, -2)
+            proj = self.pool(h_v)
         else:
             raise NotImplementedError("pooling error")
         return proj
@@ -167,3 +159,31 @@ class PI2DSSM(nn.Module):
         # output proj
         y = self.C_h(h_h.permute(0, 2, 1)) + self.C_v(h_v.permute(0, 2, 1))   # [B, C, L]
         return y.permute(0, 2, 1)
+
+
+class InvariantAttnPool(nn.Module):
+    """
+    Permutation-INVARIANT attention pooling over variables.
+    h_v: [B, C, L]  -> psi: [B, d_inner, L]
+    """
+    def __init__(self, d_inner: int, att_dim: int = 64):
+        super().__init__()
+        self.d_inner = d_inner
+        self.att_dim = min(d_inner, att_dim)
+        self.W_k = nn.Linear(1, self.att_dim, bias=False)
+        self.W_v = nn.Linear(1, self.att_dim, bias=False)
+        self.W_q = nn.Linear(1, self.att_dim, bias=False)
+        self.psi_out = nn.Linear(self.att_dim, d_inner, bias=False)
+
+    def forward(self, h_v: torch.Tensor) -> torch.Tensor:
+        B, C, L = h_v.shape
+        x = h_v.unsqueeze(-1)                   # [B,C,L,1]
+        k = self.W_k(x)                         # [B,C,L,H]
+        v = self.W_v(x)                         # [B,C,L,H]
+        s = h_v.mean(dim=1, keepdim=True).unsqueeze(-1)  # [B,1,L,1]  (대칭)
+        q = self.W_q(s)                         # [B,1,L,H]
+        logits = (q * k).sum(-1) / math.sqrt(self.att_dim)  # [B,C,L]
+        alpha = torch.softmax(logits, dim=1)    # [B,C,L]
+        psi_latent = (alpha.unsqueeze(-1) * v).sum(dim=1)   # [B,L,H]
+        psi = self.psi_out(psi_latent).transpose(1, 2).contiguous()  # [B,d_inner,L]
+        return psi
