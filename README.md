@@ -1,2 +1,2 @@
 # Variable-Invariant-2D-SSM
-VARIABLE-INVARIANT 2D STATE SPACE MODELS FOR TIME SERIES MODELING
+Variable-Invariant 2D State Space Models for Time Series Modeling
