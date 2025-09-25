@@ -4,7 +4,7 @@ import math
 from einops import rearrange
 from mamba_ssm.ops.selective_scan_interface import selective_scan_fn
 
-class PI2DSSM(nn.Module):
+class VI2DSSM(nn.Module):
     def __init__(
         self, d_inner: int, state_size: int,
         dt_rank: str | int = "auto",
