@@ -1,2 +1,2 @@
-# Variable-Invariant-2D-SSM
-Variable-Invariant 2D State Space Models for Time Series Modeling
+# Mamba Unchained: A Permutation-Invariant Approach to Multivariate Time Series
+Mamba Unchained: A Permutation-Invariant Approach to Multivariate Time Series
