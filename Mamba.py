@@ -4,7 +4,7 @@ import torch.nn.functional as F
 from einops import rearrange
 
 from causal_conv1d import causal_conv1d_fn
-from SSM import PI2DSSM
+from SSM import VI2DSSM
 
 from fft import dft, idft
 
@@ -17,7 +17,7 @@ class RMSNorm(nn.Module):
         norm_x = x * torch.rsqrt(x.pow(2).mean(-1, keepdim=True) + self.eps)
         return self.weight * norm_x
 
-class PIMamba(nn.Module):
+class VIMamba(nn.Module):
     def __init__(self, d_model, state_size, variable_dim, expand=2, d_conv=4, dropout=0.1):
         super().__init__()
         self.d_model = d_model        # Hidden dim
@@ -37,9 +37,9 @@ class PIMamba(nn.Module):
         nn.init.zeros_(self.conv_bias)
 
         # Multi-Scale branches
-        self.long_branch = PI2DSSM(n_variable, state_size, dt_min=0.1, dt_max=0.5) # [0.001, 0.1]
-        self.short_branch = PI2DSSM(n_variable, state_size, dt_min=0.01, dt_max=0.05) # [0.001, 0.05]
-        self.freq_branch = PI2DSSM(n_variable, state_size, dt_min=0.001, dt_max=0.01) # [0.001, 0.01]
+        self.long_branch = VI2DSSM(n_variable, state_size, dt_min=0.1, dt_max=0.5) # [0.001, 0.1]
+        self.short_branch = VI2DSSM(n_variable, state_size, dt_min=0.01, dt_max=0.05) # [0.001, 0.05]
+        self.freq_branch = VI2DSSM(n_variable, state_size, dt_min=0.001, dt_max=0.01) # [0.001, 0.01]
 
         self.norm_long = nn.LayerNorm(self.d_inner)
         self.norm_short = nn.LayerNorm(self.d_inner)
