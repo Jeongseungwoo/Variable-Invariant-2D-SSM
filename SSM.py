@@ -180,7 +180,7 @@ class InvariantAttnPool(nn.Module):
         x = h_v.unsqueeze(-1)                   # [B,C,L,1]
         k = self.W_k(x)                         # [B,C,L,H]
         v = self.W_v(x)                         # [B,C,L,H]
-        s = h_v.mean(dim=1, keepdim=True).unsqueeze(-1)  # [B,1,L,1]  (대칭)
+        s = h_v.mean(dim=1, keepdim=True).unsqueeze(-1)  # [B,1,L,1]
         q = self.W_q(s)                         # [B,1,L,H]
         logits = (q * k).sum(-1) / math.sqrt(self.att_dim)  # [B,C,L]
         alpha = torch.softmax(logits, dim=1)    # [B,C,L]
